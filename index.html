@@ -18,6 +18,7 @@
         background-color: #003366; /* Dark blue background (e.g., for hockey) */
         margin: 0;
         padding: 20px;
+        overflow-x: hidden; /* Prevent horizontal scrollbar during animation */
       }
 
       #bingo-card-container {
@@ -28,6 +29,7 @@
         width: 100%;
         max-width: 500px; /* Increased max-width for larger screens */
         text-align: center;
+        position: relative; /* Needed for absolute positioning of the victory screen */
       }
 
       h1 {
@@ -102,6 +104,57 @@
         color: #ffffff;
       }
 
+      #victory-screen {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: rgba(0, 51, 102, 0.9); /* Dark blue with opacity */
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+        z-index: 10;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
+      }
+
+      #victory-screen.show {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      #victory-screen h2 {
+        font-size: 36px;
+        margin-bottom: 20px;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+      }
+
+      #victory-screen button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #FFD700;  /* Gold button */
+        color: #003366;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 18px;
+        transition: background-color 0.2s ease;
+        font-family: 'Open Sans', sans-serif;
+      }
+
+      #victory-screen button:hover {
+        background-color: #FFC300; /* Darker gold */
+      }
+
       @media (max-width: 400px) {
         #bingo-card-container {
           padding: 10px;
@@ -121,6 +174,12 @@
         }
         #instructions{
             font-size: 12px;
+        }
+        #victory-screen {
+            font-size: 18px;
+        }
+        #victory-screen h2 {
+            font-size: 28px;
         }
       }
     </style>
@@ -149,6 +208,7 @@
     const BingoCard = () => {
       const [cardData, setCardData] = React.useState([]);
       const [selectedCells, setSelectedCells] = React.useState({});
+      const [victory, setVictory] = React.useState(false);
 
       React.useEffect(() => {
         const savedCardData = localStorage.getItem('bingoCardData');
@@ -182,20 +242,64 @@
         localStorage.setItem('selectedCells', JSON.stringify(selectedCells));
       }, [cardData, selectedCells]);
 
+      React.useEffect(() => {
+        checkWin();
+      }, [selectedCells]);
+
       const generateCard = () => {
         const shuffledTeams = [...collegeHockeyTeams].sort(() => 0.5 - Math.random());
         const selectedTeams = shuffledTeams.slice(0, 24);
         const card = selectedTeams.slice(0, 12).concat(["Free Space"]).concat(selectedTeams.slice(12, 24));
         setCardData(card);
         setSelectedCells({}); // Reset selections when generating a new card
+        setVictory(false);
       };
 
       const handleCellClick = (index) => {
         if (index === 12) return; // Prevent "Free Space" from being selected
-        setSelectedCells(prevSelectedCells => ({
-          ...prevSelectedCells,
-          [index]: !prevSelectedCells[index]
-        }));
+        setSelectedCells(prevSelectedCells => {
+          const newSelectedCells = {
+            ...prevSelectedCells,
+            [index]: !prevSelectedCells[index]
+          };
+          return newSelectedCells;
+        });
+      };
+
+      const checkWin = () => {
+        const lines = [
+          [0, 1, 2, 3, 4],
+          [5, 6, 7, 8, 9],
+          [10, 11, 12, 13, 14],
+          [15, 16, 17, 18, 19],
+          [20, 21, 22, 23, 24],
+          [0, 5, 10, 15, 20],
+          [1, 6, 11, 16, 21],
+          [2, 7, 12, 17, 22],
+          [3, 8, 13, 18, 23],
+          [4, 9, 14, 19, 24],
+          [0, 6, 12, 18, 24],
+          [4, 8, 12, 16, 20]
+        ];
+
+        for (let i = 0; i < lines.length; i++) {
+          const [a, b, c, d, e] = lines[i];
+          if (
+            (selectedCells[a] || a === 12) &&
+            (selectedCells[b] || b === 12) &&
+            (selectedCells[c] || c === 12) &&
+            (selectedCells[d] || d === 12) &&
+            (selectedCells[e] || e === 12)
+          ) {
+            setVictory(true);
+            return;
+          }
+        }
+        setVictory(false);
+      };
+
+      const closeVictoryScreen = () => {
+        setVictory(false);
       };
 
       const resetCard = () => {
@@ -219,6 +323,11 @@
           <button id="reset-button" onClick={resetCard}>Reset Card</button>
           <div id="instructions">
             <p>Click the squares as the teams are mentioned. Get five in a row, horizontally, vertically, or diagonally, to win!</p>
+          </div>
+          <div id="victory-screen" className={victory ? 'show' : ''}>
+            <h2>BINGO!</h2>
+            <p>You won!</p>
+            <button onClick={closeVictoryScreen}>Close</button>
           </div>
         </div>
       );
