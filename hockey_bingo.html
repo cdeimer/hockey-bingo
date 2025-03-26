@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Hockey Bingo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <style>
+      body {
+        font-family: 'Open Sans', sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #003366; /* Dark blue background (e.g., for hockey) */
+        margin: 0;
+        padding: 20px;
+      }
+
+      #bingo-card-container {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 500px; /* Increased max-width for larger screens */
+        text-align: center;
+      }
+
+      h1 {
+        color: #003366; /* Dark blue heading */
+        margin-bottom: 20px;
+      }
+
+      #bingo-card {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px; /* Reduced gap for smaller screens */
+        width: 100%;
+        max-width: 400px; /* Max width for the bingo card */
+        margin: 0 auto;
+      }
+
+      .bingo-cell {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        aspect-ratio: 1 / 1; /* Keep cells square-shaped */
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 12px; /* Reduced font size for smaller screens */
+        font-weight: bold;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: normal;  /* Changed to normal to allow wrapping */
+        word-wrap: break-word; /* Add word-wrap for long words */
+      }
+
+      .bingo-cell:hover {
+        background-color: #4CAF50; /* Highlight on hover */
+        color: white;
+      }
+
+      .bingo-cell.selected {
+        background-color: #4CAF50; /* Green for selected */
+        color: white;
+      }
+
+      .bingo-cell.free-space {
+        background-color: #FFD700; /* Gold for free space */
+        color: #003366;
+      }
+
+      #reset-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #003366;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.2s ease;
+        font-family: 'Open Sans', sans-serif;
+      }
+
+      #reset-button:hover {
+        background-color: #002140; /* Darker blue on hover */
+      }
+
+      #instructions {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 14px;
+        color: #ffffff;
+      }
+
+      @media (max-width: 400px) {
+        #bingo-card-container {
+          padding: 10px;
+        }
+        #bingo-card {
+            gap: 4px;
+        }
+        .bingo-cell {
+          font-size: 10px;
+        }
+        h1 {
+            font-size: 20px;
+        }
+        #reset-button{
+            font-size: 12px;
+            padding: 8px 16px;
+        }
+        #instructions{
+            font-size: 12px;
+        }
+      }
+    </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const collegeHockeyTeams = [
+      "Air Force Falcons", "Alaska Anchorage Seawolves", "Alaska Nanooks", "American International Yellow Jackets",
+      "Arizona State Sun Devils", "Army Black Knights", "Bemidji State Beavers", "Bowling Green Falcons",
+      "Brown Bears", "Canisius Golden Griffins", "Clarkson Golden Knights", "Colgate Raiders",
+      "Colorado College Tigers", "Connecticut Huskies", "Cornell Big Red", "Dartmouth Big Green",
+      "Denver Pioneers", "Ferris State Bulldogs", "Holy Cross Crusaders", "Lake Superior State Lakers",
+      "Long Island University Sharks", "Maine Black Bears", "Manitoba Bisons", "Merrimack Warriors",
+      "Miami RedHawks", "Michigan Wolverines", "Michigan State Spartans", "Michigan Tech Huskies",
+      "Minnesota Golden Gophers", "Minnesota State Mavericks", "Minot State Beavers", "Mount Royal Cougars",
+      "Nebraska Omaha Mavericks", "New Hampshire Wildcats", "Niagara Purple Eagles", "Northern Michigan Wildcats",
+      "Notre Dame Fighting Irish", "Ohio State Buckeyes", "Penn State Nittany Lions", "Princeton Tigers",
+      "Providence Friars", "Queen's Golden Gaels", "Rensselaer Polytechnic Institute Engineers", "Robert Morris Colonials",
+      "Sacred Heart Pioneers", "St. Cloud State Huskies", "St. Lawrence Saints", "St. Thomas Tommies",
+      "SUNY Canton Kangaroos", "SUNY Cortland Red Dragons", "SUNY Geneseo Knights", "SUNY Morrisville Mustangs",
+      "Yale Bulldogs", "Wisconsin Badgers", "Western Michigan Broncos", "Western Ontario Mustangs"
+    ];
+
+    const BingoCard = () => {
+      const [cardData, setCardData] = React.useState([]);
+      const [selectedCells, setSelectedCells] = React.useState({});
+
+      React.useEffect(() => {
+        const savedCardData = localStorage.getItem('bingoCardData');
+        const savedSelectedCells = localStorage.getItem('selectedCells');
+
+        if (savedCardData) {
+          try {
+            setCardData(JSON.parse(savedCardData));
+          } catch (error) {
+            console.error("Error parsing savedCardData:", error);
+            generateCard(); // Regenerate if saved data is corrupted
+          }
+        } else {
+          generateCard();
+        }
+
+        if (savedSelectedCells) {
+          try{
+             setSelectedCells(JSON.parse(savedSelectedCells));
+          } catch(error){
+            console.error("Error parsing savedSelectedCells:", error);
+            setSelectedCells({});
+          }
+        }
+      }, []);
+
+      React.useEffect(() => {
+        if (cardData.length > 0) {
+          localStorage.setItem('bingoCardData', JSON.stringify(cardData));
+        }
+        localStorage.setItem('selectedCells', JSON.stringify(selectedCells));
+      }, [cardData, selectedCells]);
+
+      const generateCard = () => {
+        const shuffledTeams = [...collegeHockeyTeams].sort(() => 0.5 - Math.random());
+        const selectedTeams = shuffledTeams.slice(0, 24);
+        const card = selectedTeams.slice(0, 12).concat(["Free Space"]).concat(selectedTeams.slice(12, 24));
+        setCardData(card);
+        setSelectedCells({}); // Reset selections when generating a new card
+      };
+
+      const handleCellClick = (index) => {
+        if (index === 12) return; // Prevent "Free Space" from being selected
+        setSelectedCells(prevSelectedCells => ({
+          ...prevSelectedCells,
+          [index]: !prevSelectedCells[index]
+        }));
+      };
+
+      const resetCard = () => {
+        generateCard();
+      };
+
+      return (
+        <div id="bingo-card-container">
+          <h1>College Hockey Bingo</h1>
+          <div id="bingo-card">
+            {cardData.map((team, index) => (
+              <div
+                key={index}
+                className={`bingo-cell ${index === 12 ? 'free-space' : ''} ${selectedCells[index] ? 'selected' : ''}`}
+                onClick={() => handleCellClick(index)}
+              >
+                {index === 12 ? 'Free Space' : team}
+              </div>
+            ))}
+          </div>
+          <button id="reset-button" onClick={resetCard}>Reset Card</button>
+          <div id="instructions">
+            <p>Click the squares as the teams are mentioned. Get five in a row, horizontally, vertically, or diagonally, to win!</p>
+          </div>
+        </div>
+      );
+    };
+
+    const rootElement = document.getElementById('root');
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<BingoCard />);
+  </script>
+</body>
+</html>
